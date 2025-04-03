@@ -4,6 +4,8 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import preprocess_input
 import numpy as np
 import os
+import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -12,8 +14,8 @@ static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 if not os.path.exists(static_dir):
     os.makedirs(static_dir)
 
-# Check if model file exists
-model_path = "model.keras"
+# Correct the model path
+model_path = os.getenv("MODEL_PATH", "model.keras")  # Use an environment variable for the model path
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"Model file not found at {model_path}")
 
@@ -38,6 +40,29 @@ def predict_label(img_path):
         print(f"Error in prediction: {str(e)}")
         return None
 
+def save_and_predict(img):
+    try:
+        # Sanitize and generate a unique filename
+        filename = secure_filename(img.filename)
+        unique_filename = f"{uuid.uuid4().hex}_{filename}"
+        img_path = os.path.join(static_dir, unique_filename)
+        img.save(img_path)
+
+        predictions = predict_label(img_path)
+        if predictions is None:
+            return None, "Error processing image"
+
+        probabilities = predictions[0].tolist()
+        predicted_class = d[1] if probabilities[1] > 0.5 else d[0]
+
+        return {
+            "prediction": predicted_class,
+            "probabilities": probabilities,
+            "img_path": img_path
+        }, None
+    except Exception as e:
+        return None, str(e)
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
@@ -51,30 +76,14 @@ def predict():
     if not img.filename:
         return jsonify({"error": "No selected file"}), 400
 
-    try:
-        img_path = os.path.join(static_dir, img.filename)
-        img.save(img_path)
+    result, error = save_and_predict(img)
+    if error:
+        return jsonify({"error": error}), 500
 
-        predictions = predict_label(img_path)
-        if predictions is None:
-            return jsonify({"error": "Error processing image"}), 500
+    return jsonify(result)
 
-        probabilities = predictions[0].tolist()
-        predicted_class = d[1] if probabilities[1] > 0.5 else d[0]
-
-        return jsonify({
-            "prediction": predicted_class,
-            "probabilities": probabilities,
-            "img_path": img_path
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/submit", methods=['GET', 'POST'])
+@app.route("/submit", methods=['POST'])
 def get_output():
-    if request.method != 'POST':
-        return jsonify({"error": "Method not allowed"}), 405
-
     if 'img' not in request.files:
         return jsonify({"error": "No image uploaded"}), 400
 
@@ -82,19 +91,12 @@ def get_output():
     if not img.filename:
         return jsonify({"error": "No selected file"}), 400
 
-    try:
-        img_path = os.path.join(static_dir, img.filename)
-        img.save(img_path)
+    result, error = save_and_predict(img)
+    if error:
+        return jsonify({"error": error}), 500
 
-        predictions = predict_label(img_path)
-        if predictions is None:
-            return jsonify({"error": "Error processing image"}), 500
-
-        predicted_class = d[1] if predictions[0][1] > 0.5 else d[0]
-        return jsonify({"predicted_class": predicted_class})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"predicted_class": result["prediction"]})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("Starting Flask application...")  # Debugging log
+    app.run(debug=False)  # Ensure Flask app runs correctly
