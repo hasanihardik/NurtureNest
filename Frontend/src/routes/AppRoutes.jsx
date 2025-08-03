@@ -14,6 +14,10 @@ import RegisterUser from "../components/ui/RegisterUser";
 import UserProfile from "../components/ui/UserProfile";
 import UpdateProfile from "../components/ui/UpdateProfile";
 import MainFeature from "../components/ui/MainFeaturePage";
+import Community from "../components/ui/Community";
+import VoiceAssistant from "../components/ui/VoiceAssistant";
+import HealthRecords from "../components/ui/HealthRecords";
+import DoctorDashboard from "../components/ui/DoctorDashboard";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -88,6 +92,37 @@ const AppRoutes = () => {
       <Route path="/update-profile" element={
         <ProtectedRoute>
           <UpdateProfile />
+        </ProtectedRoute>
+      } />
+
+      {/* New Advanced Features */}
+      <Route path="/community" element={
+        <ProtectedRoute>
+          <Community />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/voice" element={
+        <ProtectedRoute>
+          <VoiceAssistant />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/records" element={
+        <ProtectedRoute>
+          <HealthRecords />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/doctor" element={
+        <ProtectedRoute>
+          <DoctorDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/appointments" element={
+        <ProtectedRoute>
+          <DoctorDashboard />
         </ProtectedRoute>
       } />
 
